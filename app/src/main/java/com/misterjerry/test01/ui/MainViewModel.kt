@@ -68,14 +68,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun handleSoundClassification(label: String, direction: Float) {
         val (koreanLabel, urgency) = when (label) {
+            // Safety (High Urgency)
+            "Siren", "Ambulance (siren)", "Fire engine, fire truck (siren)" -> "사이렌" to Urgency.HIGH
+            "Car horn, honking" -> "자동차 경적" to Urgency.HIGH
+            "Baby cry, infant cry" -> "아기 울음소리" to Urgency.HIGH
+            "Smoke detector, smoke alarm" -> "화재 경보기" to Urgency.HIGH
+            "Glass" -> "유리 깨지는 소리" to Urgency.HIGH
+            "Scream" -> "비명 소리" to Urgency.HIGH
+
+            // Alerts / Communication (Medium Urgency)
+            "Doorbell" -> "초인종 소리" to Urgency.MEDIUM
+            "Telephone", "Ringtone" -> "전화 벨소리" to Urgency.MEDIUM
+            "Alarm" -> "알람 소리" to Urgency.MEDIUM
+            "Dog", "Bark" -> "개 짖는 소리" to Urgency.MEDIUM
+
+            // Daily Life (Low Urgency)
             "Clapping", "Hands" -> "박수 소리" to Urgency.LOW
             "Knock" -> "노크 소리" to Urgency.LOW
             "Finger snapping" -> "핑거 스냅" to Urgency.LOW
-            "Siren", "Ambulance (siren)", "Fire engine, fire truck (siren)" -> "사이렌" to Urgency.HIGH
-            "Car horn, honking" -> "자동차 경적" to Urgency.HIGH
-            "Dog", "Bark" -> "개 짖는 소리" to Urgency.MEDIUM
-            "Baby cry, infant cry" -> "아기 울음소리" to Urgency.HIGH
             "Speech" -> "말소리" to Urgency.LOW
+            "Water tap, faucet" -> "물 틀어놓은 소리" to Urgency.LOW
+            "Toilet flush" -> "변기 물 내리는 소리" to Urgency.LOW
+            "Microwave oven" -> "전자레인지 소리" to Urgency.LOW
+            "Cat", "Meow" -> "고양이 울음소리" to Urgency.LOW
+
             else -> return // Ignore other sounds for now
         }
 
@@ -204,6 +220,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val emotionEmoji = when (emotionLabel) {
                 "긍정" -> "😃"
                 "부정" -> "😠"
+                "놀람" -> "😲"
+                "슬픔" -> "😢"
+                "공포" -> "😨"
+                "걱정" -> "😟"
                 else -> "😐"
             }
 
@@ -225,7 +245,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun analyzeEmotionWithGpt(text: String): String {
         return try {
-            val prompt = "다음 텍스트의 감정을 분석해서 '긍정', '부정', '중립' 중 하나로만 대답해줘. 텍스트: $text"
+            val prompt = """
+                다음 텍스트의 감정을 분석해서 '긍정', '부정', '중립', '놀람', '슬픔', '공포', '걱정' 중 하나로만 대답해줘.
+                각 감정의 기준은 다음과 같아:
+                - 긍정: 기쁨, 행복, 동의, 칭찬, 감사 (예: "정말 좋아", "고마워")
+                - 부정: 화남, 짜증, 비판, 거절, 불만 (예: "싫어", "그만해")
+                - 놀람: 충격, 믿기 힘듦, 예상치 못한 상황 (예: "정말?", "헐")
+                - 슬픔: 후회, 실망, 비탄, 우울 (예: "너무 슬퍼", "아쉬워")
+                - 공포: 무서움, 위협, 다급함 (예: "도와줘", "무서워")
+                - 걱정: 불안, 근심, 상대방의 안부를 묻거나 염려함 (예: "괜찮아?", "조심해")
+                - 중립: 감정이 드러나지 않는 사실 전달, 단순 질문 (예: "지금 몇 시야?", "밥 먹었어")
+
+                텍스트: $text
+            """.trimIndent()
             val request = com.misterjerry.test01.data.api.ChatRequest(
                 messages = listOf(
                     com.misterjerry.test01.data.api.Message(role = "user", content = prompt)
@@ -235,7 +267,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val content = response.choices.firstOrNull()?.message?.content?.trim() ?: "중립"
             
             // Validate response just in case
-            if (content in listOf("긍정", "부정", "중립")) content else "중립"
+            if (content in listOf("긍정", "부정", "중립", "놀람", "슬픔", "공포", "걱정")) content else "중립"
         } catch (e: Exception) {
             e.printStackTrace()
             // Fallback to heuristic analysis
@@ -247,6 +279,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return when {
             text.contains("화나") || text.contains("짜증") -> "부정"
             text.contains("행복") || text.contains("좋아") || text.contains("사랑") -> "긍정"
+            text.contains("놀라") || text.contains("헉") -> "놀람"
+            text.contains("슬퍼") || text.contains("우울") -> "슬픔"
+            text.contains("무서") || text.contains("공포") -> "공포"
+            text.contains("걱정") || text.contains("불안") || text.contains("근심") || text.contains("괜찮아") -> "걱정"
             else -> "중립"
         }
     }
