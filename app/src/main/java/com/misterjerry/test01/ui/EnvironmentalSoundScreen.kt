@@ -66,6 +66,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.misterjerry.test01.ui.theme.WarningColor
+import com.misterjerry.test01.ui.theme.NotificationAccent
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.HorizontalDivider
 
 @Composable
 fun EnvironmentalSoundScreen(viewModel: MainViewModel = viewModel()) {
@@ -185,24 +194,25 @@ fun SoundSettingsDialog(
     var lowSetting by remember { mutableStateOf(currentSettings.lowUrgency) }
 
     AlertDialog(
+        containerColor = Color.White,
         onDismissRequest = onDismiss,
         title = { Text(text = "알림 설정") },
         text = {
             Column(modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                 UrgencySettingItem(
-                    title = "위험 알림",
+                    title = "위험 소리",
                     setting = highSetting,
                     onSettingChange = { highSetting = it }
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray)
                 UrgencySettingItem(
-                    title = "주의 알림",
+                    title = "주의 소리",
                     setting = mediumSetting,
                     onSettingChange = { mediumSetting = it }
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray)
                 UrgencySettingItem(
-                    title = "일상 알림",
+                    title = "일상 소리",
                     setting = lowSetting,
                     onSettingChange = { lowSetting = it }
                 )
@@ -218,13 +228,20 @@ fun SoundSettingsDialog(
                             lowUrgency = lowSetting
                         )
                     )
-                }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NotificationAccent,
+                    contentColor = Color.Black
+                )
             ) {
                 Text("저장")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = NotificationAccent)
+            ) {
                 Text("취소")
             }
         }
@@ -246,28 +263,64 @@ fun UrgencySettingItem(
             Text(text = title, fontWeight = FontWeight.Bold)
             Switch(
                 checked = setting.isEnabled,
-                onCheckedChange = { onSettingChange(setting.copy(isEnabled = it)) }
+                onCheckedChange = { onSettingChange(setting.copy(isEnabled = it)) },
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = NotificationAccent,
+                    checkedThumbColor = Color.White
+                )
             )
         }
         
         if (setting.isEnabled) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "진동 패턴", style = MaterialTheme.typography.bodyMedium)
-            Row(modifier = Modifier.fillMaxWidth()) {
-                VibrationPattern.values().forEach { pattern ->
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            var expanded by remember { mutableStateOf(false) }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "진동 패턴", style = MaterialTheme.typography.bodyMedium)
+                
+                Box(
+                    modifier = Modifier
+                        .width(140.dp)
+                        .border(1.dp, Color.LightGray, RoundedCornerShape(4.dp))
+                        .clickable { expanded = true }
+                        .padding(8.dp)
+                ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 8.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RadioButton(
-                            selected = setting.vibrationPattern == pattern,
-                            onClick = { onSettingChange(setting.copy(vibrationPattern = pattern)) }
-                        )
                         Text(
-                            text = pattern.label,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(start = 4.dp)
+                            text = setting.vibrationPattern.label,
+                            style = MaterialTheme.typography.bodyMedium
                         )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Dropdown",
+                            tint = Color.Gray
+                        )
+                    }
+                    
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        VibrationPattern.values().forEach { pattern ->
+                            DropdownMenuItem(
+                                text = { Text(text = pattern.label) },
+                                onClick = {
+                                    onSettingChange(setting.copy(vibrationPattern = pattern))
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
